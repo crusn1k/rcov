@@ -10,9 +10,11 @@ fn main() {
 fn invoke_command(command: &str) -> String {
     let args = get_args();
 
+    let command = format!("{} {}", command, args);
+
     let err_msg = format!("failed to run {}.", command);
 
-    let command = Command::new("sh").arg("-c").arg(command).arg(args).output().expect(err_msg.as_str());
+    let command = Command::new("sh").arg("-c").arg(command).output().expect(err_msg.as_str());
 
     let output = str::from_utf8(&command.stdout).unwrap();
 
@@ -26,7 +28,10 @@ fn invoke_command(command: &str) -> String {
 fn check_coverage(output: &str) {
     let rgx = Regex::new(r"([0-9]+(\.[0-9]+)?)% coverage").unwrap();
     
-    let capture = rgx.captures(output).unwrap();
+    let capture = match rgx.captures(output) {
+        Some(c) => c,
+        None => return,
+    };
 
     let coverage: f32 = capture.get(1).map_or("0", |c| c.as_str()).parse().unwrap(); 
 
@@ -38,8 +43,8 @@ fn get_args() -> String {
 
     let mut _args = String::new();
 
-    for arg in args.iter() {
-        _args = format!("{} {} ", _args, arg);
+    for i in 1..args.len() {
+        _args = format!("{} {} ", _args, args[i]);
     }
 
     return _args;
