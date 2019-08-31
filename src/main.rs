@@ -15,7 +15,7 @@ fn invoke_command(command: &str) -> String {
     let err_msg = format!("failed to run {}.", command);
 
     let command = Command::new("sh").arg("-c").arg(command).output().expect(err_msg.as_str());
-    git checprintln!("{:?}", command);
+
     let output = str::from_utf8(&command.stdout).unwrap();
 
     println!("{}", output);
@@ -56,7 +56,7 @@ mod test_main {
    #[test]
     fn test_invoke_command() {
         let output = crate::invoke_command("echo 21% coverage");
-
+        
         crate::check_coverage(output.as_str());
     }
 }
