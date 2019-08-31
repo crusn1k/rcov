@@ -18,8 +18,6 @@ fn invoke_command(command: &str) -> String {
 
     let output = str::from_utf8(&command.stdout).unwrap();
 
-    println!("{}", output);
-
     assert!(command.status.success());
 
     String::from(output)
@@ -34,8 +32,11 @@ fn check_coverage(output: &str) {
     };
 
     let coverage: f32 = capture.get(1).map_or("0", |c| c.as_str()).parse().unwrap(); 
-
-    assert!(coverage > 80.0);
+    
+    match coverage > 80.0 {
+        true => println!("Test Coverage Passed"),
+        false => println!("Test Coverage Failed")
+    };
 }
 
 fn get_args() -> String {
@@ -46,17 +47,5 @@ fn get_args() -> String {
     for i in 1..args.len() {
         _args = format!("{} {} ", _args, args[i]);
     }
-
-    return _args;
-}
-
-
-#[cfg(test)]
-mod test_main {
-   #[test]
-    fn test_invoke_command() {
-        let output = crate::invoke_command("echo 21% coverage");
-        
-        crate::check_coverage(output.as_str());
-    }
+    _args
 }
