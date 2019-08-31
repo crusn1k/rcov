@@ -1,16 +1,34 @@
-use std::{env, str, process::Command};
+use clap::{Arg, App};
+use std::{str, process::Command};
 use regex::Regex;
 
 fn main() {
-    let output = invoke_command("cargo tarpaulin");
+    let args: String = get_arguments();
+
+    let _style = format!("cargo {}", args);
+    println!("Style {}",_style );
+    let output = invoke_command(_style.as_str());
 
     check_coverage(output.as_str());
 }
 
-fn invoke_command(command: &str) -> String {
-    let args = get_args();
+fn get_arguments() -> String {
+        let matches = App::new("rcov")
+                          .arg(Arg::with_name("covstyle")
+                               .short("cs")
+                               .long("covstyle")
+                               .help("Runs test coverage style")
+                               .takes_value(true))
+                          .get_matches();
+    let _style = matches.value_of("covstyle").unwrap_or("default.conf");
 
-    let command = format!("{} {}", command, args);
+    let mut _args = String::new();
+    _args = format!("{} {} ", _args, _style);
+    println!("Format {}", _args);
+    _args
+}
+
+fn invoke_command(command: &str) -> String {
 
     let err_msg = format!("failed to run {}.", command);
 
@@ -48,15 +66,4 @@ fn is_enough_test_coverage(coverage : f32) -> Result<(), ()> {
     } else {
         Err(())
     }
-}
-
-fn get_args() -> String {
-    let args: Vec<String> = env::args().collect();
-
-    let mut _args = String::new();
-
-    for i in 1..args.len() {
-        _args = format!("{} {} ", _args, args[i]);
-    }
-    _args
 }
