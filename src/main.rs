@@ -66,7 +66,6 @@ fn is_enough_test_coverage(coverage : f32) -> Result<(), ()> {
     } else {
         Err(())
     }
-    _args
 }
 
 #[cfg(test)]
