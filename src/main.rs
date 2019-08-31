@@ -49,3 +49,13 @@ fn get_args() -> String {
     }
     _args
 }
+
+#[cfg(test)]
+mod test_main {
+   #[test]
+    fn test_invoke_command() {
+        let output = crate::invoke_command("echo 81% coverage");
+
+        crate::check_coverage(output.as_str());
+    }
+}
