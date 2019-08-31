@@ -33,10 +33,21 @@ fn check_coverage(output: &str) {
 
     let coverage: f32 = capture.get(1).map_or("0", |c| c.as_str()).parse().unwrap(); 
     
-    match coverage > 80.0 {
-        true => println!("Test Coverage Passed"),
-        false => println!("Test Coverage Failed")
-    };
+    ::std::process::exit(match is_enough_test_coverage(coverage) {
+       Ok(_) => 0,
+       Err(err) => {
+           eprintln!("error: {:?}", err);
+           -1
+       }
+    });
+}
+
+fn is_enough_test_coverage(coverage : f32) -> Result<(), ()> {
+    if coverage >= 80.0 {
+        Ok(())
+    } else {
+        Err(())
+    }
 }
 
 fn get_args() -> String {
