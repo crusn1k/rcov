@@ -17,4 +17,6 @@ Install rcov into cargo's bin directory using command - cargo install --path=<PA
 
 To use rcov, navigage to the root folder of rust project and run command - rcov
 
-You can pass the parameters to tarpaulin as input to rcov. e.g. rcov -v
+You can pass the parameters to tarpaulin as an input to rcov. e.g. rcov tarpaulin -v
+
+Default minimum test case coverage percentage is 80. This can be overriden using '-m' flag.
