@@ -1,0 +1,352 @@
+<!doctype html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <style>html, body {
+  margin: 0;
+  padding: 0;
+}
+
+.app {
+  margin: 10px;
+  padding: 0;
+}
+
+.files-list {
+  margin: 10px 0 0;
+  width: 100%;
+  border-collapse: collapse;
+}
+.files-list__head {
+  border: 1px solid #999;
+}
+.files-list__head > tr > th {
+  padding: 10px;
+  border: 1px solid #999;
+  text-align: left;
+  font-weight: normal;
+  background: #ddd;
+}
+.files-list__body {
+}
+.files-list__file {
+  cursor: pointer;
+}
+.files-list__file:hover {
+  background: #ccf;
+}
+.files-list__file > td {
+  padding: 10px;
+  border: 1px solid #999;
+}
+.files-list__file > td:first-child::before {
+  content: '\01F4C4';
+  margin-right: 1em;
+}
+.files-list__file_low {
+  background: #fcc;
+}
+.files-list__file_medium {
+  background: #ffc;
+}
+.files-list__file_high {
+  background: #cfc;
+}
+.files-list__file_folder > td:first-child::before {
+  content: '\01F4C1';
+  margin-right: 1em;
+}
+
+.file-header {
+  border: 1px solid #999;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.file-header__back {
+  margin: 10px;
+  cursor: pointer;
+  flex-shrink: 0;
+  flex-grow: 0;
+  text-decoration: underline;
+  color: #338;
+}
+
+.file-header__name {
+  margin: 10px;
+  flex-shrink: 2;
+  flex-grow: 2;
+}
+
+.file-header__stat {
+  margin: 10px;
+  flex-shrink: 0;
+  flex-grow: 0;
+}
+
+.file-content {
+  margin: 10px 0 0;
+  border: 1px solid #999;
+  padding: 10px;
+}
+
+.code-line {
+  margin: 0;
+  padding: 0.3em;
+  height: 1em;
+}
+.code-line_covered {
+  background: #cfc;
+}
+.code-line_uncovered {
+  background: #fcc;
+}
+</style>
+</head>
+<body>
+    <div id="root"></div>
+    <script>var data = {"files":[{"path":["/","mnt","c","Users","crusn","Projects","rcov","src","main.rs"],"content":"use clap::{clap_app, AppSettings};\nuse std::{str, process::{Command, exit}};\nuse regex::Regex;\n\nfn main() {\n    let (min_cov_pct, cov_tool, cov_tool_args) = get_cov_settings();\n    \n    let output = invoke_command(cov_tool, cov_tool_args);\n\n    exit(check_coverage(output, min_cov_pct));\n}\n\nfn get_cov_settings() -\u003e (f32, String, String) {\n    let m =  clap_app!(myapp =\u003e\n        (version: \"1.0\")\n        (author: \"Nishikant Ajay Patil \u003ccrusnik02.trinityblood@gmail.com\u003e\")\n        (about: \"Wrapper over tarpaulin code coverage tool.\")\n        (setting: AppSettings::AllowExternalSubcommands)\n        (@arg min_cov_pct: -m --mincovpct +takes_value \"Minimum code coverate percentage.\")\n        (@arg quiet: -q --quiet \"Quite mode for tests.\")\n    ).get_matches();\n\n    let min_cov_pct: f32 = m.value_of(\"min_cov_pct\").unwrap_or(\"80\").parse().unwrap();\n    let cov_tool: String;\n    let mut cov_tool_args = String::from(\"\");\n\n    match m.subcommand() {\n        (_cov_tool, Some(ext_m)) =\u003e {\n            let _cov_tool_args: Vec\u003c\u0026str\u003e = ext_m.values_of(\"\").unwrap().collect();\n            cov_tool_args = _cov_tool_args.join(\" \").to_string();\n            let _cov_tool = format!(\"cargo {}\", _cov_tool);\n            cov_tool = _cov_tool.to_string();\n        },\n        _ =\u003e {\n            cov_tool = \"cargo tarpaulin\".to_string();\n        },\n    }\n\n    println!(r\"Coverage settings:\n                Minimum line coverage required : {}%\n                Coverage tool used : {}\n                Coverage tool args : {}\", min_cov_pct, cov_tool, cov_tool_args);\n    \n    (min_cov_pct, cov_tool, cov_tool_args)\n}\n\nfn invoke_command(cov_tool: String, cov_tool_args: String) -\u003e String {\n\n    let err_msg = format!(\"failed to run {}.\", cov_tool);\n\n    let cov_tool_cmd = format!(\"{} {}\", cov_tool, cov_tool_args);\n\n    let command = Command::new(\"sh\").arg(\"-c\").arg(cov_tool_cmd).output().expect(err_msg.as_str());\n\n    let output = str::from_utf8(\u0026command.stdout).unwrap();\n\n    assert!(command.status.success());\n\n    println!(\"{}\", output);\n\n    String::from(output)\n}\n\nfn check_coverage(output: String, min_cov_pct: f32) -\u003e i32 {\n    let rgx = Regex::new(r\"([0-9]+(\\.[0-9]+)?)% coverage\").unwrap();\n    \n    let capture = match rgx.captures(output.as_str()) {\n        Some(c) =\u003e c,\n        None =\u003e return -2,\n    };\n\n    let coverage: f32 = capture.get(1).map_or(\"0\", |c| c.as_str()).parse().unwrap(); \n    \n    if coverage \u003c min_cov_pct {\n        println!(\"Test case coverage of {} is less than the minimum required coverage {}. Cannot proceed with this build.\", coverage, min_cov_pct);\n        return -1;\n    }\n\n    0\n}\n\n#[cfg(test)]\nmod test_main {\n   #[test]\n    fn test_invoke_command() {\n        let _output = crate::invoke_command(\"echo\".to_string(), \"81% coverage\".to_string());\n    }\n\n    #[test]\n    fn test_check_coverage() {\n        assert_eq!(0, crate::check_coverage(\"81% coverage\".to_string(), 81.0));\n        assert_eq!(-1, crate::check_coverage(\"80% coverage\".to_string(), 81.0));\n        assert_eq!(-2, crate::check_coverage(\"foobar\".to_string(), 81.0));\n    }\n\n    #[test]\n    fn test_get_cov_settings() {\n        crate::get_cov_settings();\n    }\n}","traces":[{"line":5,"address":4228032,"length":1,"stats":{"Line":0}},{"line":6,"address":4228039,"length":1,"stats":{"Line":0}},{"line":8,"address":4228153,"length":1,"stats":{"Line":0}},{"line":10,"address":4228279,"length":1,"stats":{"Line":0}},{"line":13,"address":4228432,"length":1,"stats":{"Line":1}},{"line":14,"address":4228455,"length":1,"stats":{"Line":1}},{"line":18,"address":4228646,"length":1,"stats":{"Line":1}},{"line":23,"address":4229174,"length":1,"stats":{"Line":1}},{"line":25,"address":4229389,"length":1,"stats":{"Line":1}},{"line":27,"address":4229415,"length":1,"stats":{"Line":1}},{"line":28,"address":4229446,"length":1,"stats":{"Line":1}},{"line":29,"address":4229568,"length":1,"stats":{"Line":0}},{"line":30,"address":4229648,"length":1,"stats":{"Line":0}},{"line":31,"address":4229801,"length":1,"stats":{"Line":0}},{"line":32,"address":4229975,"length":1,"stats":{"Line":0}},{"line":35,"address":4229490,"length":1,"stats":{"Line":1}},{"line":39,"address":4230136,"length":1,"stats":{"Line":1}},{"line":44,"address":4230504,"length":1,"stats":{"Line":1}},{"line":47,"address":4231136,"length":1,"stats":{"Line":1}},{"line":49,"address":4231146,"length":1,"stats":{"Line":1}},{"line":51,"address":4231420,"length":1,"stats":{"Line":1}},{"line":53,"address":4231724,"length":1,"stats":{"Line":1}},{"line":55,"address":4232005,"length":1,"stats":{"Line":1}},{"line":57,"address":4232114,"length":1,"stats":{"Line":1}},{"line":59,"address":4232155,"length":1,"stats":{"Line":1}},{"line":61,"address":4232334,"length":1,"stats":{"Line":1}},{"line":64,"address":4232688,"length":1,"stats":{"Line":1}},{"line":65,"address":4232704,"length":1,"stats":{"Line":1}},{"line":67,"address":4232807,"length":1,"stats":{"Line":1}},{"line":68,"address":4232888,"length":1,"stats":{"Line":1}},{"line":69,"address":4232934,"length":1,"stats":{"Line":1}},{"line":72,"address":4209232,"length":1,"stats":{"Line":2}},{"line":74,"address":4233272,"length":1,"stats":{"Line":1}},{"line":75,"address":4233332,"length":1,"stats":{"Line":1}},{"line":76,"address":4233584,"length":1,"stats":{"Line":1}},{"line":79,"address":4233295,"length":1,"stats":{"Line":1}},{"line":85,"address":4248144,"length":1,"stats":{"Line":2}},{"line":86,"address":4248155,"length":1,"stats":{"Line":1}},{"line":90,"address":4248320,"length":1,"stats":{"Line":2}},{"line":91,"address":4248334,"length":1,"stats":{"Line":1}},{"line":92,"address":4248466,"length":1,"stats":{"Line":1}},{"line":93,"address":4248902,"length":1,"stats":{"Line":1}},{"line":97,"address":4249632,"length":1,"stats":{"Line":2}}],"covered":35,"coverable":43}]};</script>
+    <script crossorigin src="https://unpkg.com/react@16/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@16/umd/react-dom.production.min.js"></script>
+    <script>const e = React.createElement;
+
+function pathToString(path) {
+  if (path[0] === '/') {
+    return '/' + path.slice(1).join('/');
+  } else {
+    return path.join('/');
+  }
+}
+
+function findCommonPath(files) {
+  if (!files || !files.length) {
+    return [];
+  }
+
+  function isPrefix(arr, prefix) {
+    if (arr.length < prefix.length) {
+      return false;
+    }
+    for (let i = prefix.length - 1; i >= 0; --i) {
+      if (arr[i] !== prefix[i]) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  let commonPath = files[0].path.slice(0, -1);
+  while (commonPath.length) {
+    if (files.every(file => isPrefix(file.path, commonPath))) {
+      break;
+    }
+    commonPath.pop();
+  }
+  return commonPath;
+}
+
+function findFolders(files) {
+  if (!files || !files.length) {
+    return [];
+  }
+
+  let folders = files.filter(file => file.path.length > 1).map(file => file.path[0]);
+  folders = [...new Set(folders)]; // unique
+  folders.sort();
+
+  folders = folders.map(folder => {
+    let filesInFolder = files
+      .filter(file => file.path[0] === folder)
+      .map(file => ({
+        ...file,
+        path: file.path.slice(1),
+        parent: [...file.parent, file.path[0]],
+      }));
+
+    const children = findFolders(filesInFolder); // recursion
+
+    return {
+      is_folder: true,
+      path: [folder],
+      parent: files[0].parent,
+      children,
+      covered: children.reduce((sum, file) => sum + file.covered, 0),
+      coverable: children.reduce((sum, file) => sum + file.coverable, 0),
+    };
+  });
+
+  return [
+    ...folders,
+    ...files.filter(file => file.path.length === 1),
+  ];
+}
+
+class App extends React.Component {
+  constructor(...args) {
+    super(...args);
+
+    this.state = {
+      current: [],
+    };
+  }
+
+  componentDidMount() {
+    this.updateStateFromLocation();
+    window.addEventListener("hashchange", () => this.updateStateFromLocation(), false);
+  }
+
+  updateStateFromLocation() {
+    if (window.location.hash.length > 1) {
+      const current = window.location.hash.substr(1).split('/');
+      this.setState({current});
+    } else {
+      this.setState({current: []});
+    }
+  }
+
+  getCurrentPath() {
+    let file = this.props.root;
+    let path = [file];
+    for (let p of this.state.current) {
+      file = file.children.find(file => file.path[0] === p);
+      if (!file) {
+        return path;
+      }
+      path.push(file);
+    }
+    return path;
+  }
+
+  render() {
+    const path = this.getCurrentPath();
+    const file = path[path.length - 1];
+
+    let w = null;
+    if (file.is_folder) {
+      w = e(FilesList, {
+        folder: file,
+        onSelectFile: this.selectFile.bind(this),
+        onBack: path.length > 1 ? this.back.bind(this) : null,
+      });
+    } else {
+      w = e(DisplayFile, {
+        file,
+        onBack: this.back.bind(this),
+      });
+    }
+
+    return e('div', {className: 'app'}, w);
+  }
+
+  selectFile(file) {
+    this.setState(({current}) => {
+      return {current: [...current, file.path[0]]};
+    }, () => this.updateHash());
+  }
+
+  back(file) {
+    this.setState(({current}) => {
+      return {current: current.slice(0, current.length - 1)};
+    }, () => this.updateHash());
+  }
+
+  updateHash() {
+    if (!this.state.current || !this.state.current.length) {
+      window.location = '#';
+    } else {
+      window.location = '#' + this.state.current.join('/');
+    }
+  }
+}
+
+function FilesList({folder, onSelectFile, onBack}) {
+  let files = folder.children;
+  return e('div', {className: 'display-folder'},
+    e(FileHeader, {file: folder, onBack}),
+    e('table', {className: 'files-list'},
+      e('thead', {className: 'files-list__head'},
+        e('tr', null,
+          e('th', null, "Path"),
+          e('th', null, "Coverage")
+        )
+      ),
+      e('tbody', {className: 'files-list__body'},
+        files.map(file => e(File, {file, onClick: onSelectFile}))
+      )
+    )
+  );
+}
+
+function File({file, onClick}) {
+  const coverage = file.coverable ? file.covered / file.coverable * 100 : -1;
+
+  return e('tr', {
+      className: 'files-list__file'
+        + (coverage >= 0 && coverage < 50 ? ' files-list__file_low': '')
+        + (coverage >= 50 && coverage < 80 ? ' files-list__file_medium': '')
+        + (coverage >= 80 ? ' files-list__file_high': '')
+        + (file.is_folder ? ' files-list__file_folder': ''),
+      onClick: () => onClick(file),
+    },
+    e('td', null, pathToString(file.path)),
+    e('td', null,
+      file.covered + ' / ' + file.coverable +
+      (coverage >= 0 ? ' (' + coverage.toFixed(2) + '%)' : '')
+    )
+  );
+}
+
+function DisplayFile({file, onBack}) {
+  return e('div', {className: 'display-file'},
+    e(FileHeader, {file, onBack}),
+    e(FileContent, {file})
+  );
+}
+
+function FileHeader({file, onBack}) {
+  return e('div', {className: 'file-header'},
+    onBack ? e('a', {className: 'file-header__back', onClick: onBack}, 'Back') : null,
+    e('div', {className: 'file-header__name'}, pathToString([...file.parent, ...file.path])),
+    e('div', {className: 'file-header__stat'},
+      'Covered: ' + file.covered + ' of ' + file.coverable +
+      (file.coverable ? ' (' + (file.covered / file.coverable * 100).toFixed(2) + '%)' : '')
+    )
+  );
+}
+
+function FileContent({file}) {
+  return e('div', {className: 'file-content'},
+    file.content.split(/\r?\n/).map((line, index) => {
+      const trace = file.traces.find(trace => trace.line === index + 1);
+      const covered = trace && trace.stats.Line;
+      const uncovered = trace && !trace.stats.Line;
+      return e('pre', {
+          className: 'code-line'
+            + (covered ? ' code-line_covered' : '')
+            + (uncovered ? ' code-line_uncovered' : ''),
+          title: trace ? JSON.stringify(trace.stats, null, 2) : null,
+        }, line);
+    })
+  );
+}
+
+(function(){
+  const commonPath = findCommonPath(data.files);
+  const files = data.files.map(file => ({...file, path: file.path.slice(commonPath.length), parent: commonPath}));
+  const children = findFolders(files);
+
+  const root = {
+    is_folder: true,
+    children,
+    path: commonPath,
+    parent: [],
+    covered: children.reduce((sum, file) => sum + file.covered, 0),
+    coverable: children.reduce((sum, file) => sum + file.coverable, 0),
+  };
+
+  ReactDOM.render(e(App, {root}), document.getElementById('root'));
+}());
+</script>
+</body>
+</html>
