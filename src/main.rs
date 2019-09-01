@@ -7,7 +7,7 @@ fn main() {
     
     let output = invoke_command(cov_tool, cov_tool_args);
 
-    check_coverage(output, min_cov_pct);
+    exit(check_coverage(output, min_cov_pct));
 }
 
 fn get_cov_settings() -> (f32, String, String) {
@@ -61,20 +61,22 @@ fn invoke_command(cov_tool: String, cov_tool_args: String) -> String {
     String::from(output)
 }
 
-fn check_coverage(output: String, min_cov_pct: f32) {
+fn check_coverage(output: String, min_cov_pct: f32) -> i32 {
     let rgx = Regex::new(r"([0-9]+(\.[0-9]+)?)% coverage").unwrap();
     
     let capture = match rgx.captures(output.as_str()) {
         Some(c) => c,
-        None => return,
+        None => return -2,
     };
 
     let coverage: f32 = capture.get(1).map_or("0", |c| c.as_str()).parse().unwrap(); 
     
     if coverage < min_cov_pct {
         println!("Test case coverage of {} is less than the minimum required coverage {}. Cannot proceed with this build.", coverage, min_cov_pct);
-        exit(-1);
+        return -1;
     }
+
+    0
 }
 
 #[cfg(test)]
@@ -86,7 +88,9 @@ mod test_main {
 
     #[test]
     fn test_check_coverage() {
-        crate::check_coverage("81% coverage".to_string(), 81.0);
+        assert_eq!(0, crate::check_coverage("81% coverage".to_string(), 81.0));
+        assert_eq!(-1, crate::check_coverage("80% coverage".to_string(), 81.0));
+        assert_eq!(-2, crate::check_coverage("foobar".to_string(), 81.0));
     }
 
     #[test]
